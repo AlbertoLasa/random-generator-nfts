@@ -1,77 +1,37 @@
-# NFT Generation and Metadata Upload
+# Service Documentation
 
-This repository contains code for generating NFT images by combining layers from segments and uploading them to IPFS via Pinata. Additionally, it provides functionality to upload a collection of metadata from an Excel file to IPFS.
+## General Description
 
-## Prerequisites
+This service provides a RESTful API for uploading, decompressing, and processing ZIP files containing images. It generates combined images from segmented layers and uploads both the resulting images and associated metadata to IPFS via Pinata. It is developed using `Node.js` and `Express`, leveraging various libraries for image manipulation, file decompression, and data validation.
 
-Before running the code, make sure you have the following installed:
+## Requirements
 
-- Node.js
-- npm or yarn
-- Canvas dependencies (if not installed already, follow the instructions for your operating system from [node-canvas](https://github.com/Automattic/node-canvas))
+- Node.js and npm installed.
+- Environment variables configured in a `.env` file:
+  - `PINATA_JWT`: JWT token for authenticating uploads to Pinata.
 
-## Setup
+## Installation
 
-1. Clone this repository to your local machine.
+1. Clone the repository:
+    ```bash
+    git clone <repository-url>
+    cd <repository-directory>
+    ```
 
-```bash
-git clone https://github.com/your-username/your-repo.git
-```
+2. Install dependencies:
+    ```bash
+    npm install
+    ```
 
-2. Navigate to the project directory.
-
-```bash
-cd your-repo
-```
-
-3. Install dependencies.
-
-```bash
-npm install
-```
-
-or
-
-```bash
-yarn install
-```
-
-4. Create a `.env` file in the root directory and add your Pinata API keys.
-
-```
-PINATA_API_KEY=your-pinata-api-key
-PINATA_SECRET_API_KEY=your-pinata-secret-api-key
-JWT_SECRET=your-jwt-secret
-```
+3. Create a `.env` file in the root directory and add the following environment variables:
+    ```
+    PINATA_JWT=<your-pinata-jwt-token>
+    ```
 
 ## Usage
 
-### Generating NFT Images
+### Starting the Server
 
-To generate an NFT image, send a POST request to the `/generate` endpoint with the base URL of the segment images. The request body should be in JSON format with the following structure:
-
-```json
-{
-  "baseUrl": "https://your-domain.com/segments"
-}
-```
-
-Replace `"https://your-domain.com/segments"` with the actual base URL of your segment images.
-
-### Uploading Metadata
-
-To upload metadata from an Excel file to IPFS, send a POST request to the `/upload-metadata` endpoint with the Excel file. Make sure the Excel file contains metadata in the following format:
-
-| name        | description           | image                      | attributes           |
-|-------------|-----------------------|----------------------------|----------------------|
-| NFT Name 1  | Description of NFT 1  | https://example.com/nft1.png | {"trait": "value"}  |
-| NFT Name 2  | Description of NFT 2  | https://example.com/nft2.png | {"trait": "value"}  |
-| ...         | ...                   | ...                        | ...                  |
-
-### Authentication
-
-Both endpoints require a valid JWT token in the `Authorization` header. Make sure to include the token when making requests.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+To start the server, run:
+```bash
+node index
