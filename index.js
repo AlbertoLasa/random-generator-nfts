@@ -36,12 +36,12 @@ app.use(cors());
 // Multer setup
 const mkdirp = require('mkdirp');
 const multer = require('multer');
-const upload = multer({ 
+const upload = multer({
   dest: 'images/',
   limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB
   fileFilter: (req, file, cb) => {
     if (path.extname(file.originalname) !== '.zip') {
-        return cb(new Error('Only ZIP files are allowed'));
+      return cb(new Error('Only ZIP files are allowed'));
     }
     cb(null, true);
   }
@@ -51,77 +51,77 @@ const unzipper = require('unzipper');
 // Endpoint to upload a ZIP file and extract it
 app.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
-      // Verfify if a file was uploaded
-      if (!req.file) {
-          return res.status(400).json({ error: 'No se ha subido ningún archivo' });
+    // Verfify if a file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file has been uploaded' });
+    }
+
+    // Get the uploaded file
+    const file = req.file;
+
+    // Create a random folder ID
+    const randomFolderId = uuidv4();
+    // Create a directory for the uploaded files
+    const baseDir = path.join(__dirname, 'images');
+    mkdirp.sync(baseDir);
+    const uploadDir = path.join(baseDir, randomFolderId);
+    mkdirp.sync(uploadDir);
+
+    setTimeout(() => {
+      if (fs.existsSync(uploadDir)) {
+        removeDirectory(uploadDir);
+        console.log(`Dirctory ${uploadDir} removed.`);
       }
+    }, 24 * 60 * 60 * 1000); // 24 hours
 
-      // Get the uploaded file
-      const file = req.file;
+    // Filter out unwanted files and directories
+    fs.createReadStream(file.path)
+      .pipe(unzipper.Parse())
+      .on('entry', (entry) => {
+        const fileName = entry.path;
+        const fileType = path.extname(fileName).toLowerCase();
+        const allowedExtensions = ['.png'];
+        const ignorePatterns = [
+          '__MACOSX',
+          'Thumbs.db',
+          'desktop.ini',
+          '.DS_Store'
+        ];
 
-      // Create a random folder ID
-      const randomFolderId = uuidv4();
-      // Create a directory for the uploaded files
-      const baseDir = path.join(__dirname, 'images');
-      mkdirp.sync(baseDir);
-      const uploadDir = path.join(baseDir, randomFolderId);
-      mkdirp.sync(uploadDir);
-
-      setTimeout(() => {
-        if (fs.existsSync(uploadDir)) {
-            removeDirectory(uploadDir);
-            console.log(`Dirctory ${uploadDir} removed.`);
+        // Filter out unwanted files and directories
+        if (ignorePatterns.some(pattern => fileName.includes(pattern)) || (!allowedExtensions.includes(fileType) && entry.type !== 'Directory')) {
+          entry.autodrain();
+        } else {
+          let filePath = path.join(uploadDir, fileName);
+          filePath = path.join(uploadDir, fileName.split('/').slice(1).join('/'));
+          if (entry.type === 'Directory') {
+            mkdirp.sync(filePath);
+            entry.autodrain();
+          } else {
+            mkdirp.sync(path.dirname(filePath));
+            entry.pipe(fs.createWriteStream(filePath))
+              .on('error', err => {
+                console.error('Error when writing the file:', err);
+                entry.autodrain();
+              });
+          }
         }
-      }, 24 * 60 * 60 * 1000); // 24 hours
-
-      // Filter out unwanted files and directories
-      fs.createReadStream(file.path)
-          .pipe(unzipper.Parse())
-          .on('entry', (entry) => {
-              const fileName = entry.path;
-              const fileType = path.extname(fileName).toLowerCase();
-              const allowedExtensions = ['.png'];
-              const ignorePatterns = [
-                '__MACOSX',
-                'Thumbs.db',
-                'desktop.ini',
-                '.DS_Store'
-              ];
-
-              // Filter out unwanted files and directories
-              if (ignorePatterns.some(pattern => fileName.includes(pattern)) || (!allowedExtensions.includes(fileType) && entry.type !== 'Directory')) {
-                  entry.autodrain();
-              } else {
-                  let filePath = path.join(uploadDir, fileName);
-                  filePath = path.join(uploadDir, fileName.split('/').slice(1).join('/'));
-                  if (entry.type === 'Directory') {
-                    mkdirp.sync(filePath);
-                    entry.autodrain();
-                  } else {
-                    mkdirp.sync(path.dirname(filePath));
-                    entry.pipe(fs.createWriteStream(filePath))
-                      .on('error', err => {
-                        console.error('Error al escribir el archivo:', err);
-                        entry.autodrain();
-                      });
-                  }
-              }
-          })
-          .on('close', () => {
-              res.json({ message: 'Archivo subido y descomprimido con éxito.', folderId: randomFolderId });
-          })
-          .on('error', (err) => {
-              console.error('Error al descomprimir el archivo:', err);
-              res.status(500).json({ error: 'Error al descomprimir el archivo' });
-          });
+      })
+      .on('close', () => {
+        res.json({ message: 'Archive uploaded and decompressed successfully', folderId: randomFolderId });
+      })
+      .on('error', (err) => {
+        console.error('Error when decompressing the file:', err);
+        res.status(500).json({ error: 'Error when decompressing the file' });
+      });
   } catch (error) {
-      // Log and return an error
-      if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-          res.status(413).json({ error: 'Size limit exceeded' });
-      } else {
-          console.error(error);
-          res.status(500).json({ error: 'Error al subir y descomprimir el archivo' });
-      }
+    // Log and return an error
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({ error: 'Size limit exceeded' });
+    } else {
+      console.error(error);
+      res.status(500).json({ error: 'Error up and break down the file' });
+    }
   }
 });
 
@@ -222,7 +222,7 @@ app.post('/generate', verifyToken, asyncHandler(async (req, res) => {
         const baseName = path.basename(file);
         // Extract the trait type and value from the filename
         const [traitType, valueTraitType, weight,] = baseName.split('-');
-  
+
         const image = await loadImage(file);
 
         if (widthBase === 0 && heightBase === 0) {
@@ -236,7 +236,7 @@ app.post('/generate', verifyToken, asyncHandler(async (req, res) => {
           if (widthBase >= heightBase) {
             if (widthBase / heightBase !== image.width / image.height) {
               removeDirectory(outputDir);
-              return res.status(400).json({ error: `Image dimensions do not match: ${imageName}`});
+              return res.status(400).json({ error: `Image dimensions do not match: ${imageName}` });
             }
           } else {
             if (heightBase / widthBase !== image.height / image.width) {
@@ -284,19 +284,19 @@ app.post('/generate', verifyToken, asyncHandler(async (req, res) => {
       };
 
       if (collectionDescription !== undefined && collectionDescription.length > 0) {
-          metadata = { ...metadata, description: collectionDescription };
+        metadata = { ...metadata, description: collectionDescription };
       }
       if (external_url !== undefined && external_url.length > 0) {
-          metadata = { ...metadata, external_url: external_url };
+        metadata = { ...metadata, external_url: external_url };
       }
       if (animation_url !== undefined && animation_url.length > 0) {
-          metadata = { ...metadata, animation_url: animation_url };
+        metadata = { ...metadata, animation_url: animation_url };
       }
       if (youtube_url !== undefined && youtube_url.length > 0) {
-          metadata = { ...metadata, youtube_url: youtube_url };
+        metadata = { ...metadata, youtube_url: youtube_url };
       }
       if (author !== undefined && author.length > 0) {
-          metadata = { ...metadata, author: author };
+        metadata = { ...metadata, author: author };
       }
 
       const metadataPath = path.join(metadataDir, `${i}.json`);
@@ -321,7 +321,7 @@ app.post('/generate', verifyToken, asyncHandler(async (req, res) => {
     // Remove the temporary directory
     const outputDir = path.join(__dirname, 'tmp', `output-${randomFolderId}`);
     removeDirectory(outputDir);
-    
+
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Bad Request', details: error.errors });
     } else {
@@ -348,7 +348,7 @@ async function removeDirectory(directory) {
     console.error(`Error removing directory ${directory}:`, err);
   }
 }
- // Start the server
+// Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
